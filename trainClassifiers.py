@@ -1,5 +1,6 @@
 import nltk
 import math
+import pandas
 
 
 def getWords(categorizedCorpus, category):
@@ -14,8 +15,8 @@ def splitData(data, fraction):
     return data[0:cutoff], data[cutoff:]
 
 
-corpus = nltk.corpus.reader.CategorizedPlaintextCorpusReader("corpus", ".*" , cat_pattern=r'(\w+)/*', encoding='latin-1')
-
+#SFU Data
+corpus = nltk.corpus.reader.CategorizedPlaintextCorpusReader("corpus", ".*", cat_pattern=r'(\w+)/*', encoding='latin-1')
 trainData = {}
 testData = {}
 labels = corpus.categories()
@@ -26,3 +27,9 @@ for label in labels:
     trainData[label], testData[label] = splitData(instances, 0.7)
 
 print(trainData)
+
+
+#BBC data
+data = pandas.read_csv("bbc-text.csv")
+trainDataBBC, testDataBBC = splitData(data, 0.7)
+print(trainDataBBC)
