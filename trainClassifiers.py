@@ -15,6 +15,10 @@ def splitData(data, fraction):
     return data[0:cutoff], data[cutoff:]
 
 
+
+
+
+
 #SFU Data
 corpus = nltk.corpus.reader.CategorizedPlaintextCorpusReader("corpus", ".*", cat_pattern=r'(\w+)/*', encoding='latin-1')
 trainData = {}
@@ -26,10 +30,28 @@ for label in labels:
     instances = [i for i in data if i]
     trainData[label], testData[label] = splitData(instances, 0.7)
 
-print(trainData)
 
 
 #BBC data
 data = pandas.read_csv("bbc-text.csv")
-trainDataBBC, testDataBBC = splitData(data, 0.7)
-print(trainDataBBC)
+dataDict = {}
+
+
+
+for index, row in data.iterrows():
+    if row["category"] not in dataDict:
+        dataDict[row["category"]] = []
+    dataDict[row["category"]].append([nltk.word_tokenize(row["text"])])
+
+
+
+print(dataDict)
+# trainDataBBC = {}
+# testDataBBC = {}
+#
+#
+#
+#
+# trainDataBBC, testDataBBC = splitData(data, 0.7)
+# print(trainDataBBC)
+
