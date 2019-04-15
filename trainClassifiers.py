@@ -2,7 +2,14 @@ import nltk
 import math
 import pandas
 import argparse
+try:
+	from nltk.compat import iteritems
+except ImportError:
+	def iteritems(d):
+		return d.items()
 
+
+classifierOptions =  ["1-gram", "2-gram", "3-gram", "decisionTree", "NaiveBayes", "Maxent"]
 
 def getWords(categorizedCorpus, category):
     for fileid in set(categorizedCorpus.fileids(categories=[category])):
@@ -30,7 +37,7 @@ def loadData(data, fraction):
             dataDict[row["category"]].append(nltk.word_tokenize(row["text"]))
 
         for label in dataDict:
-            trainData[label], testData[label] = splitData(datadict[label], fraction)
+            trainData[label], testData[label] = splitData(dataDict[label], fraction)
 
     elif data == "SFU":
         corpus = nltk.corpus.reader.CategorizedPlaintextCorpusReader("corpus", ".*", cat_pattern=r'(\w+)/*', encoding='latin-1')
@@ -45,11 +52,76 @@ def loadData(data, fraction):
     else:
         raise ValueError("Data not supported")
 
-    return trainData, tetsData
+    return trainData, testData
+
+
+def wordCountsFeature(words):
+    return dict(probability.FreqDist((w for w in words)))
+
+
+def bagOfWordsFeature(words):
+    return dict([(word, True) for word in words])
+
+
+def extractFeatures(label_instances, featx):
+    feats = []
+    for label, instances in iteritems(label_instances):
+        feats.extend([(featx(i), label) for i in instances])
+    return feats
+
+
+def makeClassifier(trainer, args):
+    """ configurates classifiers with arguments
+
+    :param trainer: String: Name of classifier
+    :param args: Classifier Options
+    :return: trainFunction of configurated classifier
+    """
+    trainArgs = {}
+    if trainer == "NaiveBayes":
+        classifierTrain = NaiveBayes.train
+    elif trainer == "maxent":
+        classifierTrain = MaxentClassifier.train
+        trainArgs['max_iter'] = args.maxIter
+        trainArgs['min_ll'] = args.minll
+        trainArgs['min_lldelta'] = args.minlldelta
+    elif trainer == "decisionTree":
+        classifierTrain = DecisionTreeClassifier.train
+        trainArgs['binary'] = False
+        trainArgs['entropy_cutoff'] = args.entropyCutoff
+        trainArgs['depth_cutoff'] = args.depthCutoff
+        trainArgs['support_cutoff'] = args.supportCutoff
+
+    def train(trainFeats):
+        return classifierTrain(trainFeats, **trainArgs)
+    return train
+
+
+def evaluate(evalFeats):
+    return None
 
 
 def train(args):
-    data = loadData(args.corpus, args.fraction)
+    """ trains a Classifier based on passed Arguments
+
+       :param args: Arguments passed by user-> see main below
+       """
+    print("wtf")
+    if args.classifier not in classifierOptions:
+        raise ValueError("classifier %s is not supported" % args.classifier)
+    trainData, testData = loadData(args.corpus, args.fraction)
+    featx = bagOfWordsFeature
+
+    trainFeats = extractFeatures(trainData, featx)
+    testFeats = extractFeatures(testData, featx)
+
+    classifier = makeClassifier(trainFeats, args)
+
+
+    if args.eval:
+        # trainChunks = chunkTrees2trainChunks(evalChunkTrees)
+        eval = evaluate(testFeats)
+        print(eval)
 
 
 
@@ -82,11 +154,11 @@ def addArguments():
 
 
 
-if  __name__ == '__stupid__':
+if  __name__ == '__main__':
     args = addArguments()
 
     if args.classifier == "all":
-        for classifier in classifierOtions:
+        for classifier in classifierOptions:
             args.classifier = classifier
             train(args)
     else:
