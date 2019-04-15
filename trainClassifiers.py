@@ -97,6 +97,22 @@ def makeClassifier(trainer, args):
     return train
 
 
+def safeClassifier(chunker, args):
+    """ safes(pickles) classifierChunker
+
+    :param chunker: chunker/cLassifier to be safed
+    :param args: Arguments containing name of classifier
+    """
+    dir = os.path.dirname(__file__)
+    path = os.path.join(dir, "Classifiers")
+    file = os.path.join(path, args.classifier)
+
+    f = open(file, 'wb')
+    pickle.dump(chunker, f)
+    f.close()
+
+
+
 def evaluate(evalFeats):
     return None
 
@@ -116,6 +132,7 @@ def train(args):
     testFeats = extractFeatures(testData, featx)
 
     classifier = makeClassifier(trainFeats, args)
+    safeClassifier(classifier, args)
 
 
     if args.eval:
