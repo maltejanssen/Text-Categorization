@@ -2,14 +2,19 @@ import nltk
 import math
 import pandas
 import argparse
-try:
-	from nltk.compat import iteritems
-except ImportError:
-	def iteritems(d):
-		return d.items()
+import os
+import pickle
+from nltk.classify import DecisionTreeClassifier, MaxentClassifier, NaiveBayesClassifier
+from nltk.classify.svm import SvmClassifier
+from nltk.metrics import f_measure, precision, recall
+import collections
 
 
-classifierOptions =  ["1-gram", "2-gram", "3-gram", "decisionTree", "NaiveBayes", "Maxent"]
+classifierOptions = ["decisionTree", "NaiveBayes", "maxent", "Svm", "sklearnExtraTreesClassifier",
+                     "sklearnGradientBoostingClassifier", "sklearnRandomForestClassifier", "sklearnLogisticRegression",
+                     "sklearnBernoulliNB", "sklearnMultinomialNB", "sklearnLinearSVC", "sklearnNuSVC", "sklearnSVC",
+                     "sklearnDecisionTreeClassifier"]
+
 
 def getWords(categorizedCorpus, category):
     for fileid in set(categorizedCorpus.fileids(categories=[category])):
@@ -52,7 +57,7 @@ def loadData(data, fraction):
     else:
         raise ValueError("Data not supported")
 
-    return trainData, testData
+    return trainData, testData, labels
 
 
 def wordCountsFeature(words):
@@ -65,36 +70,65 @@ def bagOfWordsFeature(words):
 
 def extractFeatures(label_instances, featx):
     feats = []
-    for label, instances in iteritems(label_instances):
+    for label, instances in label_instances.items():
         feats.extend([(featx(i), label) for i in instances])
     return feats
 
 
-def makeClassifier(trainer, args):
+def makeClassifier(args):
     """ configurates classifiers with arguments
 
     :param trainer: String: Name of classifier
     :param args: Classifier Options
     :return: trainFunction of configurated classifier
     """
+    print(args.classifier)
     trainArgs = {}
-    if trainer == "NaiveBayes":
-        classifierTrain = NaiveBayes.train
-    elif trainer == "maxent":
+
+    if args.classifier not in classifierOptions:
+        raise ValueError("classifier %s is not supported" % args.classifier)
+    if args.classifier == "NaiveBayes":
+        classifierTrain = NaiveBayesClassifier.train
+    elif args.classifier == "maxent":
         classifierTrain = MaxentClassifier.train
         trainArgs['max_iter'] = args.maxIter
         trainArgs['min_ll'] = args.minll
         trainArgs['min_lldelta'] = args.minlldelta
-    elif trainer == "decisionTree":
+    elif args.classifier == "decisionTree":
         classifierTrain = DecisionTreeClassifier.train
         trainArgs['binary'] = False
         trainArgs['entropy_cutoff'] = args.entropyCutoff
         trainArgs['depth_cutoff'] = args.depthCutoff
         trainArgs['support_cutoff'] = args.supportCutoff
+    elif args.classifier == 'Svm':
+        classifierTrain = SvmClassifier.train
+    elif args.classifier == "sklearnExtraTreesClassifier":
+        classifierTrain = scikitlearn.SklearnClassifier(ExtraTreesClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=args.nEstimators)).train
+    elif args.classifier == "sklearnGradientBoostingClassifier":
+        classifierTrain = scikitlearn.SklearnClassifier(GradientBoostingClassifier(learning_rate=args.learningRate, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=arrgs.nEstimators)).train
+    elif args.classifier == "sklearnRandomForestClassifier":
+        classifierTrain = scikitlearn.SklearnClassifier(RandomForestClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=args.nEstimators)).train
+    elif args.classifier == "sklearnLogisticRegression":
+        classifierTrain = scikitlearn.SklearnClassifier(LogisticRegression(penalty=args.penalty, C=arg.C)).train
+    elif args.classifier == "sklearnBernoulliNB":
+        classifierTrain == scikitlearn.SklearnClassifier(sklearnBernoulliNB(alpha=args.alpha)).train
+    elif args.classifier == "sklearnMultinomialNB":
+        classifierTrain = scikitlearn.SklearnClassifier(MultinomialNB(alpha=args.alpha)).train
+    elif args.classifier == "sklearnLinearSVC":
+        classifierTrain = scikitlearn.SklearnClassifier(LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)).train
+    elif args.classifier == "sklearnNuSVC":
+        classifierTrain = scikitlearn.SklearnClassifier(NuSVC(nu=args.nu, kernel=args.kernel)).train
+    elif args.classifier == "sklearnSVC":
+        classifierTrain = scikitlearn.SklearnClassifier(SVC(C=args.C, kernel=args.kernel)).train
+    elif args.classifier == "sklearnDecisionTreeClassifier":
+        classifierTrain = scikitlearn.SklearnClassifier(DecisionTreeClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.DepthCutoff)).train
 
-    def train(trainFeats):
+
+    def trainf(trainFeats):
         return classifierTrain(trainFeats, **trainArgs)
-    return train
+    return trainf
+
+
 
 
 def safeClassifier(chunker, args):
@@ -112,9 +146,31 @@ def safeClassifier(chunker, args):
     f.close()
 
 
+def ref_test_sets(classifier, test_feats):
+    refsets = collections.defaultdict(set)
+    testsets = collections.defaultdict(set)
 
-def evaluate(evalFeats):
-    return None
+    for i, (feat, label) in enumerate(test_feats):
+        refsets[label].add(i)
+        observed = classifier.classify(feat)
+        testsets[observed].add(i)
+
+    return refsets, testsets
+
+
+def evaluate(classifier, evalFeats, labels):
+    try:
+        print('accuracy: %f' % nltk.classify.util.accuracy(classifier, evalFeats))
+    except ZeroDivisionError:
+        print('accuracy: 0')
+
+    refsets, testsets = ref_test_sets(classifier, evalFeats)
+    for label in labels:
+        ref = refsets[label]
+        test = testsets[label]
+        print('%s precision: %f' % (label, precision(ref, test) or 0))
+        print('%s recall: %f' % (label, recall(ref, test) or 0))
+        print('%s f-measure: %f' % (label, f_measure(ref, test) or 0))
 
 
 def train(args):
@@ -122,23 +178,23 @@ def train(args):
 
        :param args: Arguments passed by user-> see main below
        """
-    print("wtf")
     if args.classifier not in classifierOptions:
         raise ValueError("classifier %s is not supported" % args.classifier)
-    trainData, testData = loadData(args.corpus, args.fraction)
+    trainData, testData, labels = loadData(args.corpus, args.fraction)
     featx = bagOfWordsFeature
 
     trainFeats = extractFeatures(trainData, featx)
     testFeats = extractFeatures(testData, featx)
 
-    classifier = makeClassifier(trainFeats, args)
-    safeClassifier(classifier, args)
+    trainf = makeClassifier(args)
+    classifier = trainf(trainFeats)
+   # safeClassifier(classifier, args)
 
 
     if args.eval:
         # trainChunks = chunkTrees2trainChunks(evalChunkTrees)
-        eval = evaluate(testFeats)
-        print(eval)
+        evaluate(classifier, testFeats, labels)
+
 
 
 
@@ -166,6 +222,31 @@ def addArguments():
                                    help="default: 100")
     decisiontreeGroup.add_argument("--supportCutoff", default=10, type=int,
                                    help="default: 10")
+
+    sklearnGroup = parser.add_argument_group('sklearn Classifiers',
+                                              'These options are used by the sklearn algorithms')
+    sklearnGroup.add_argument('--alpha', type=float, default=1.0,
+                               help='smoothing parameter for naive bayes classifiers, default is %(default)s')
+    sklearnGroup.add_argument('--C', type=float, default=1.0,
+                               help='penalty parameter, default is %(default)s')
+    sklearnGroup.add_argument('--criterion', choices=['gini', 'entropy'],
+                               default='gini', help='Split quality function, default is %(default)s')
+    sklearnGroup.add_argument('--kernel', default='rbf',
+                               choices=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'],
+                               help='kernel type for support vector machine classifiers, default is %(default)s')
+    sklearnGroup.add_argument('--learningRate', type=float, default=0.1,
+                               help='learning rate, default is %(default)s')
+    sklearnGroup.add_argument('--loss', choices=['l1', 'l2'],
+                               default='l2', help='loss function, default is %(default)s')
+    sklearnGroup.add_argument('--nEstimators', type=int, default=10,
+                               help='Number of trees for Decision Tree ensembles, default is %(default)s')
+    sklearnGroup.add_argument('--nu', type=float, default=0.5,
+                               help='upper bound on fraction of training errors & lower bound on fraction of support vectors, default is %(default)s')
+    sklearnGroup.add_argument('--penalty', choices=['l1', 'l2'],
+                               default='l2', help='norm for penalization, default is %(default)s')
+    sklearnGroup.add_argument('--tfidf', default=False, action='store_true',
+                               help='Use TfidfTransformer')
+    sklearnGroup.add_argument('--maxFeats', default="auto",  help='max Feats')
 
     return parser.parse_args()
 
