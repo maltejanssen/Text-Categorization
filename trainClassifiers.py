@@ -129,6 +129,17 @@ def makeClassifier(args):
     return trainf
 
 
+def convertIntoSklearnFormat(data):
+    from sklearn.feature_extraction import DictVectorizer
+    vectorizer = DictVectorizer()
+
+    X_train, y_train = list(zip(*training_set))
+    X_train = vectorizer.fit_transform(X_train)
+
+    X_test, y_test = list(zip(*testing_set))
+    X_test = vectorizer.transform(X_test)
+
+    return X_train, X_test, y_train, y_test
 
 
 def safeClassifier(chunker, args):
