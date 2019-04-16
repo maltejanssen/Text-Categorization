@@ -8,9 +8,11 @@ from nltk.classify import DecisionTreeClassifier, MaxentClassifier, NaiveBayesCl
 from nltk.classify.svm import SvmClassifier
 from nltk.metrics import f_measure, precision, recall
 import collections
+import numpy
+from sklearn.model_selection import KFold
 
 
-classifierOptions = ["decisionTree", "NaiveBayes", "maxent", "Svm", "sklearnExtraTreesClassifier",
+classifierOptions = ["decisionTree", "NaiveBayes", "maxent", "sklearnExtraTreesClassifier",
                      "sklearnGradientBoostingClassifier", "sklearnRandomForestClassifier", "sklearnLogisticRegression",
                      "sklearnBernoulliNB", "sklearnMultinomialNB", "sklearnLinearSVC", "sklearnNuSVC", "sklearnSVC",
                      "sklearnDecisionTreeClassifier"]
@@ -100,8 +102,6 @@ def makeClassifier(args):
         trainArgs['entropy_cutoff'] = args.entropyCutoff
         trainArgs['depth_cutoff'] = args.depthCutoff
         trainArgs['support_cutoff'] = args.supportCutoff
-    elif args.classifier == 'Svm':
-        classifierTrain = SvmClassifier.train
     elif args.classifier == "sklearnExtraTreesClassifier":
         classifierTrain = scikitlearn.SklearnClassifier(ExtraTreesClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnGradientBoostingClassifier":
@@ -159,6 +159,7 @@ def ref_test_sets(classifier, test_feats):
 
 
 def evaluate(classifier, evalFeats, labels):
+    #old eval without cross Validation
     try:
         print('accuracy: %f' % nltk.classify.util.accuracy(classifier, evalFeats))
     except ZeroDivisionError:
@@ -173,6 +174,19 @@ def evaluate(classifier, evalFeats, labels):
         print('%s f-measure: %f' % (label, f_measure(ref, test) or 0))
 
 
+def crossVal(instances, trainf, testf, folds=10):
+    #add shuffling? # random.shuffle(instances)
+    kf = KFold(n_splits=folds)
+    sum = 0
+    for train, test in kf.split(instances):
+        trainData = instances[train[0]:train[-1]]
+        testData = instances[test[0]:test[-1]]
+        classifier = trainf(trainData)
+        sum += testf(classifier, testData)
+    average = sum / folds
+    return average
+
+
 def train(args):
     """ trains a Classifier based on passed Arguments
 
@@ -185,15 +199,19 @@ def train(args):
 
     trainFeats = extractFeatures(trainData, featx)
     testFeats = extractFeatures(testData, featx)
+    #print(trainFeats)
 
     trainf = makeClassifier(args)
-    classifier = trainf(trainFeats)
-   # safeClassifier(classifier, args)
+
+    print(crossVal(trainFeats, trainf, nltk.classify.util.accuracy ,  folds=args.crossFold))
+
+    #classifier = trainf(trainFeats) #old used to be instead of cross val
+   # safeClassifier(classifier, args) #pickling not possible with cross val
 
 
-    if args.eval:
-        # trainChunks = chunkTrees2trainChunks(evalChunkTrees)
-        evaluate(classifier, testFeats, labels)
+    # if args.eval:
+    #     # trainChunks = chunkTrees2trainChunks(evalChunkTrees)
+    #     evaluate(classifier, testFeats, labels)
 
 
 
@@ -206,6 +224,7 @@ def addArguments():
     parser.add_argument("--classifier", default="all", help="Classifier to be used; Options:")  # TODO options
     parser.add_argument("--eval", action='store_true', default=True, help="do evaluation")
     parser.add_argument("--backoff", default="True", help="turn on/off backoff functionality for n-grams")
+    parser.add_argument("--crossFold", default="10",  type=int, help="number of folds")
 
     maxentGroup = parser.add_argument_group("Maxent Classifier")
     maxentGroup.add_argument("-maxIter", default=10, type=int,
