@@ -106,11 +106,11 @@ def makeClassifier(args):
     elif args.classifier == "sklearnExtraTreesClassifier":
         classifierTrain = scikitlearn.SklearnClassifier(ensemble.ExtraTreesClassifier(criterion=args.criterion, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnGradientBoostingClassifier":
-        classifierTrain = scikitlearn.SklearnClassifier(ensemble.GradientBoostingClassifier(learning_rate=args.learningRate, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=arrgs.nEstimators)).train
+        classifierTrain = scikitlearn.SklearnClassifier(ensemble.GradientBoostingClassifier(learning_rate=args.learningRate, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnRandomForestClassifier":
         classifierTrain = scikitlearn.SklearnClassifier(ensemble.RandomForestClassifier(criterion=args.criterion, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnLogisticRegression":
-        classifierTrain = scikitlearn.SklearnClassifier(linear_model.LogisticRegression(penalty=args.penalty, C=arg.C)).train
+        classifierTrain = scikitlearn.SklearnClassifier(linear_model.LogisticRegression(penalty=args.penalty, C=args.C)).train
     elif args.classifier == "sklearnBernoulliNB":
         classifierTrain == scikitlearn.SklearnClassifier(naive_bayes.sklearnBernoulliNB(alpha=args.alpha)).train
     elif args.classifier == "sklearnMultinomialNB":
