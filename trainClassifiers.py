@@ -5,11 +5,12 @@ import argparse
 import os
 import pickle
 from nltk.classify import DecisionTreeClassifier, MaxentClassifier, NaiveBayesClassifier
-from nltk.classify.svm import SvmClassifier
 from nltk.metrics import f_measure, precision, recall
 import collections
 import numpy
 from sklearn.model_selection import KFold
+from nltk.classify import scikitlearn
+from sklearn import ensemble, linear_model, naive_bayes, neighbors, svm, tree
 
 
 classifierOptions = ["decisionTree", "NaiveBayes", "maxent", "sklearnExtraTreesClassifier",
@@ -103,25 +104,25 @@ def makeClassifier(args):
         trainArgs['depth_cutoff'] = args.depthCutoff
         trainArgs['support_cutoff'] = args.supportCutoff
     elif args.classifier == "sklearnExtraTreesClassifier":
-        classifierTrain = scikitlearn.SklearnClassifier(ExtraTreesClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=args.nEstimators)).train
+        classifierTrain = scikitlearn.SklearnClassifier(ensemble.ExtraTreesClassifier(criterion=args.criterion, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnGradientBoostingClassifier":
-        classifierTrain = scikitlearn.SklearnClassifier(GradientBoostingClassifier(learning_rate=args.learningRate, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=arrgs.nEstimators)).train
+        classifierTrain = scikitlearn.SklearnClassifier(ensemble.GradientBoostingClassifier(learning_rate=args.learningRate, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=arrgs.nEstimators)).train
     elif args.classifier == "sklearnRandomForestClassifier":
-        classifierTrain = scikitlearn.SklearnClassifier(RandomForestClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.depthCutoff, n_estimators=args.nEstimators)).train
+        classifierTrain = scikitlearn.SklearnClassifier(ensemble.RandomForestClassifier(criterion=args.criterion, max_features =args.maxFeats, max_depth =args.depthCutoff, n_estimators=args.nEstimators)).train
     elif args.classifier == "sklearnLogisticRegression":
-        classifierTrain = scikitlearn.SklearnClassifier(LogisticRegression(penalty=args.penalty, C=arg.C)).train
+        classifierTrain = scikitlearn.SklearnClassifier(linear_model.LogisticRegression(penalty=args.penalty, C=arg.C)).train
     elif args.classifier == "sklearnBernoulliNB":
-        classifierTrain == scikitlearn.SklearnClassifier(sklearnBernoulliNB(alpha=args.alpha)).train
+        classifierTrain == scikitlearn.SklearnClassifier(naive_bayes.sklearnBernoulliNB(alpha=args.alpha)).train
     elif args.classifier == "sklearnMultinomialNB":
-        classifierTrain = scikitlearn.SklearnClassifier(MultinomialNB(alpha=args.alpha)).train
+        classifierTrain = scikitlearn.SklearnClassifier(naive_bayes.MultinomialNB(alpha=args.alpha)).train
     elif args.classifier == "sklearnLinearSVC":
-        classifierTrain = scikitlearn.SklearnClassifier(LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)).train
+        classifierTrain = scikitlearn.SklearnClassifier(svm.LinearSVC(C=args.C, penalty=args.penalty, loss=args.loss)).train
     elif args.classifier == "sklearnNuSVC":
-        classifierTrain = scikitlearn.SklearnClassifier(NuSVC(nu=args.nu, kernel=args.kernel)).train
+        classifierTrain = scikitlearn.SklearnClassifier(svm.NuSVC(nu=args.nu, kernel=args.kernel)).train
     elif args.classifier == "sklearnSVC":
-        classifierTrain = scikitlearn.SklearnClassifier(SVC(C=args.C, kernel=args.kernel)).train
+        classifierTrain = scikitlearn.SklearnClassifier(svm.SVC(C=args.C, kernel=args.kernel)).train
     elif args.classifier == "sklearnDecisionTreeClassifier":
-        classifierTrain = scikitlearn.SklearnClassifier(DecisionTreeClassifier(criterion=args.criterion, max_feats=args.maxFeats, depth_cutoff=args.DepthCutoff)).train
+        classifierTrain = scikitlearn.SklearnClassifier(tree.DecisionTreeClassifier(criterion=args.criterion, max_features =args.maxFeats, max_depth =args.DepthCutoff)).train
 
 
     def trainf(trainFeats):
